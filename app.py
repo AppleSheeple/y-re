@@ -65,6 +65,9 @@ def extract_stream(page_url):
         "no_warnings": True,
         "skip_download": True,
         "noplaylist": True,
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:159.0) Gecko/20100101 Firefox/159.0",
+        },
     }
 
     cookies_b64 = os.environ.get("YTDLP_COOKIES_B64")
