@@ -138,26 +138,26 @@ def get_stream(stream_id):
             headers={"Cache-Control": "no-store"},
         )
     except yt_dlp.utils.DownloadError as exc:
-            app.logger.error(
-                "yt-dlp extraction failed for stream_id=%s: %s",
-                stream_id,
-                redact_urls(exc),
-            )
-            return Response(
-                "The stream could not be extracted. Check the server logs for details.\n",
-                status=502,
-                mimetype="text/plain",
-            )
-        except Exception as exc:
-            app.logger.error(
-                "Unexpected stream error for stream_id=%s (%s): %s",
-                stream_id,
-                type(exc).__name__,
-                redact_urls(exc),
-            )
-            return Response(
-                "An unexpected error occurred while processing the stream.\n",
-                status=502,
-                mimetype="text/plain",
-            )
+        app.logger.error(
+            "yt-dlp extraction failed for stream_id=%s: %s",
+            stream_id,
+            redact_urls(exc),
+        )
+        return Response(
+            "The stream could not be extracted. Check the server logs for details.\n",
+            status=502,
+            mimetype="text/plain",
+        )
+    except Exception as exc:
+        app.logger.error(
+            "Unexpected stream error for stream_id=%s (%s): %s",
+            stream_id,
+            type(exc).__name__,
+            redact_urls(exc),
+        )
+        return Response(
+            "An unexpected error occurred while processing the stream.\n",
+            status=502,
+            mimetype="text/plain",
+        )
 
