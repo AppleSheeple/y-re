@@ -1,6 +1,7 @@
 from cachetools import TTLCache
 from flask import Flask, Response, abort, redirect
 import yt_dlp
+import re
 
 app = Flask(__name__)
 
@@ -11,6 +12,9 @@ STREAMS = {
 
 # Cache up to 100 stream URLs for 5 minutes.
 stream_cache = TTLCache(maxsize=100, ttl=300)
+
+def redact_urls(message):
+    return re.sub(r"https?://\S+", "[URL]", str(message))
 
 def is_h264(format_info):
     return (format_info.get("vcodec") or "").lower().startswith("avc1")
@@ -133,12 +137,27 @@ def get_stream(stream_id):
             mimetype="application/vnd.apple.mpegurl",
             headers={"Cache-Control": "no-store"},
         )
-
-    except Exception:
-        app.logger.exception("Failed to extract stream %s", stream_id)
-        return Response(
-            "Could not extract the live stream.\n",
-            status=502,
-            mimetype="text/plain",
-        )
+    except yt_dlp.utils.DownloadError as exc:
+            app.logger.error(
+                "yt-dlp extraction failed for stream_id=%s: %s",
+                stream_id,
+                redact_urls(exc),
+            )
+            return Response(
+                "The stream could not be extracted. Check the server logs for details.\n",
+                status=502,
+                mimetype="text/plain",
+            )
+        except Exception as exc:
+            app.logger.error(
+                "Unexpected stream error for stream_id=%s (%s): %s",
+                stream_id,
+                type(exc).__name__,
+                redact_urls(exc),
+            )
+            return Response(
+                "An unexpected error occurred while processing the stream.\n",
+                status=502,
+                mimetype="text/plain",
+            )
 
