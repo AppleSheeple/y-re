@@ -2,6 +2,9 @@ from cachetools import TTLCache
 from flask import Flask, Response, abort, redirect, jsonify
 import yt_dlp
 import re
+import base64
+import os
+import tempfile
 
 app = Flask(__name__)
 
@@ -64,8 +67,31 @@ def extract_stream(page_url):
         "noplaylist": True,
     }
 
-    with yt_dlp.YoutubeDL(options) as ydl:
-        info = ydl.extract_info(page_url, download=False)
+    cookies_b64 = os.environ.get("YTDLP_COOKIES_B64")
+
+    if not cookies_b64:
+        with yt_dlp.YoutubeDL(options) as ydl:
+            info = ydl.extract_info(page_url, download=False)
+    else:
+        try:
+            cookie_text = base64.b64decode(
+                cookies_b64,
+                validate=True,
+            ).decode("utf-8")
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise ValueError("YTDLP_COOKIES_B64 is not valid Base64 cookie data") from exc
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cookie_path = os.path.join(temp_dir, "cookies.txt")
+
+            with open(cookie_path, "w", encoding="utf-8", newline="") as f:
+                f.write(cookie_text)
+
+            options["cookiefile"] = cookie_path
+
+            with yt_dlp.YoutubeDL(options) as ydl:
+                info = ydl.extract_info(page_url, download=False)
+
 
     formats = [
         f for f in info.get("formats", [])
