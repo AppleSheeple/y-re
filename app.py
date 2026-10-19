@@ -1,5 +1,5 @@
 from cachetools import TTLCache
-from flask import Flask, Response, abort, redirect
+from flask import Flask, Response, abort, redirect, jsonify
 import yt_dlp
 import re
 
@@ -148,16 +148,28 @@ def get_stream(stream_id):
             status=502,
             mimetype="text/plain",
         )
+    except yt_dlp.utils.DownloadError as exc:
+        message = redact_urls(exc)
+        app.logger.error(
+            "yt-dlp extraction failed for stream_id=%s: %s",
+            stream_id,
+            message,
+        )
+        return jsonify({
+            "error": "yt_dlp_extraction_failed",
+            "message": message,
+        }), 502
+
     except Exception as exc:
+        message = redact_urls(exc)
         app.logger.error(
             "Unexpected stream error for stream_id=%s (%s): %s",
             stream_id,
             type(exc).__name__,
-            redact_urls(exc),
+            message,
         )
-        return Response(
-            "An unexpected error occurred while processing the stream.\n",
-            status=502,
-            mimetype="text/plain",
-        )
+        return jsonify({
+            "error": "stream_processing_failed",
+            "message": message,
+        }), 500
 
